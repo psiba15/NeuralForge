@@ -1,0 +1,10 @@
+^C:\USERS\SABIH\ONEDRIVE\DESKTOP\PRAC\NEURAL_FORGE\NEURALFORGE\BUILD\CMAKEFILES\288D57007AFCB9A8CB61DAA2E4932A93\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Users/sabih/OneDrive/Desktop/prac/Neural_Forge/NeuralForge -BC:/Users/sabih/OneDrive/Desktop/prac/Neural_Forge/NeuralForge/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/sabih/OneDrive/Desktop/prac/Neural_Forge/NeuralForge/build/NeuralForge.slnx
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
