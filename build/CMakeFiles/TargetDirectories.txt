@@ -1,3 +1,0 @@
-C:/Users/sabih/OneDrive/Desktop/prac/Neural_Forge/NeuralForge/build/CMakeFiles/neuralforge.dir
-C:/Users/sabih/OneDrive/Desktop/prac/Neural_Forge/NeuralForge/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/sabih/OneDrive/Desktop/prac/Neural_Forge/NeuralForge/build/CMakeFiles/ZERO_CHECK.dir
