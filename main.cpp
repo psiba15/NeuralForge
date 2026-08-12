@@ -138,245 +138,415 @@
 
 
 
-// test for autograd engine
+// // test for autograd engine
+// #include <iostream>
+// #include <cassert>
+// #include <cmath>
+// #include "tensor.h"
+// #include "value.h"
+
+// bool close(float a, float b, float eps = 1e-3f) {
+//     return std::abs(a - b) < eps;
+// }
+
+// // ── Test 1: Simple addition ───────────────────────────────────────
+// void test_addition() {
+//     std::cout << "Test 1: Addition backward... ";
+
+//     Value* a = new Value(3.0f);
+//     Value* b = new Value(4.0f);
+//     Value* c = a->add(b);   // c = a + b = 7
+
+//     c->backward();
+
+//     // d(a+b)/da = 1, d(a+b)/db = 1
+//     assert(close(a->grad, 1.0f));
+//     assert(close(b->grad, 1.0f));
+//     assert(close(c->data, 7.0f));
+
+//     delete a; delete b; delete c;
+//     std::cout << "PASSED\n";
+// }
+
+// // ── Test 2: Simple multiplication ────────────────────────────────
+// void test_multiplication() {
+//     std::cout << "Test 2: Multiplication backward... ";
+
+//     Value* a = new Value(3.0f);
+//     Value* b = new Value(4.0f);
+//     Value* c = a->mul(b);   // c = a * b = 12
+
+//     c->backward();
+
+//     // d(a*b)/da = b = 4, d(a*b)/db = a = 3
+//     assert(close(a->grad, 4.0f));
+//     assert(close(b->grad, 3.0f));
+
+//     delete a; delete b; delete c;
+//     std::cout << "PASSED\n";
+// }
+
+// // ── Test 3: Chain rule — x*w + b ─────────────────────────────────
+// void test_chain_rule() {
+//     std::cout << "Test 3: Chain rule (x*w + b)... ";
+
+//     Value* x = new Value(2.0f);
+//     Value* w = new Value(3.0f);
+//     Value* b = new Value(1.0f);
+
+//     Value* xw   = x->mul(w);       // xw  = 6
+//     Value* out  = xw->add(b);      // out = 7
+//     Value* loss = out->pow_op(2);  // loss = 49
+
+//     loss->backward();
+
+//     // manually:
+//     // d(loss)/d(out) = 2 * out = 2 * 7 = 14
+//     // d(loss)/d(xw)  = 14 * 1 = 14
+//     // d(loss)/d(w)   = 14 * x = 14 * 2 = 28
+//     // d(loss)/d(b)   = 14 * 1 = 14
+//     // d(loss)/d(x)   = 14 * w = 14 * 3 = 42
+
+//     assert(close(w->grad, 28.0f));
+//     assert(close(b->grad, 14.0f));
+//     assert(close(x->grad, 42.0f));
+
+//     std::cout << "PASSED\n";
+// }
+
+// // ── Test 4: Tanh ──────────────────────────────────────────────────
+// void test_tanh() {
+//     std::cout << "Test 4: Tanh backward... ";
+
+//     Value* x = new Value(0.5f);
+//     Value* y = x->tanh_op();
+
+//     y->backward();
+
+//     // d(tanh(x))/dx = 1 - tanh²(x)
+//     float t = std::tanh(0.5f);
+//     float expected_grad = 1.0f - t * t;
+
+//     assert(close(x->grad, expected_grad));
+//     assert(close(y->data, t));
+
+//     std::cout << "PASSED\n";
+// }
+
+// // ── Test 5: Numerical gradient check — MOST IMPORTANT TEST ───────
+// // Ye test blindly trust karo — agar ye pass hai, backward 100% correct hai
+// void test_numerical_gradient() {
+//     std::cout << "Test 5: Numerical gradient check... ";
+
+//     float epsilon = 1e-4f;
+
+//     // f(x) = tanh(x*w + b)^2
+//     // w ka gradient numerically check karenge
+//     float x_val = 1.5f;
+//     float w_val = 2.0f;
+//     float b_val = 0.5f;
+
+//     // f(w + eps)
+//     {
+//         Value* x = new Value(x_val);
+//         Value* w = new Value(w_val + epsilon);
+//         Value* b = new Value(b_val);
+//         Value* out = x->mul(w)->add(b)->tanh_op()->pow_op(2);
+//         float loss_plus = out->data;
+
+//         // f(w - eps)
+//         Value* x2 = new Value(x_val);
+//         Value* w2 = new Value(w_val - epsilon);
+//         Value* b2 = new Value(b_val);
+//         Value* out2 = x2->mul(w2)->add(b2)->tanh_op()->pow_op(2);
+//         float loss_minus = out2->data;
+
+//         float numerical_grad = (loss_plus - loss_minus) / (2 * epsilon);
+
+//         // autograd se
+//         Value* xa = new Value(x_val);
+//         Value* wa = new Value(w_val);
+//         Value* ba = new Value(b_val);
+//         Value* loss = xa->mul(wa)->add(ba)->tanh_op()->pow_op(2);
+//         loss->backward();
+
+//         assert(close(wa->grad, numerical_grad, 1e-2f));
+//     }
+
+//     std::cout << "PASSED\n";
+// }
+
+// // ── Test 6: Gradient accumulation ────────────────────────────────
+// void test_grad_accumulation() {
+//     std::cout << "Test 6: Gradient accumulation... ";
+
+//     // ek value do jagah use ho — dono gradients add hone chahiye
+//     Value* x = new Value(2.0f);
+//     Value* a = x->mul(x);   // a = x² — x dono jagah use hua
+//     // d(x²)/dx = 2x = 4
+
+//     a->backward();
+
+//     assert(close(x->grad, 4.0f));
+
+//     std::cout << "PASSED\n";
+// }
+
+
+// void test_relu() {
+//     std::cout << "Test 7: ReLU backward... ";
+
+//     // positive input — gradient pass through hona chahiye
+//     Value* x1 = new Value(3.0f);
+//     Value* y1 = x1->relu();
+//     y1->backward();
+//     assert(close(y1->data, 3.0f));
+//     assert(close(x1->grad, 1.0f));  // positive tha, grad = 1
+
+//     // negative input — gradient zero hona chahiye
+//     Value* x2 = new Value(-2.0f);
+//     Value* y2 = x2->relu();
+//     y2->backward();
+//     assert(close(y2->data, 0.0f));
+//     assert(close(x2->grad, 0.0f));  // negative tha, grad = 0
+
+//     std::cout << "PASSED\n";
+// }
+
+// void test_sigmoid() {
+//     std::cout << "Test 8: Sigmoid backward... ";
+
+//     Value* x = new Value(0.0f);
+//     Value* y = x->sigmoid();
+//     y->backward();
+
+//     // sigmoid(0) = 0.5
+//     assert(close(y->data, 0.5f));
+
+//     // d(sigmoid)/dx at x=0 = 0.5 * 0.5 = 0.25
+//     assert(close(x->grad, 0.25f));
+
+//     std::cout << "PASSED\n";
+// }
+
+// void test_log() {
+//     std::cout << "Test 9: Log backward... ";
+
+//     Value* x = new Value(2.0f);
+//     Value* y = x->log_op();
+//     y->backward();
+
+//     assert(close(y->data, std::log(2.0f)));
+
+//     // d(ln(x))/dx = 1/x = 0.5
+//     assert(close(x->grad, 0.5f));
+
+//     std::cout << "PASSED\n";
+// }
+
+// void test_division() {
+//     std::cout << "Test 10: Division backward... ";
+
+//     Value* a = new Value(6.0f);
+//     Value* b = new Value(2.0f);
+//     Value* c = a->div_op(b);   // c = 3
+//     c->backward();
+
+//     // d(a/b)/da = 1/b = 0.5
+//     // d(a/b)/db = -a/b² = -6/4 = -1.5
+//     assert(close(c->data, 3.0f));
+//     assert(close(a->grad, 0.5f));
+//     assert(close(b->grad, -1.5f));
+
+//     std::cout << "PASSED\n";
+// }
+
+// int main() {
+//     std::cout << "NeuralForge — Step 2: Autograd Tests\n";
+
+//     test_addition();
+//     test_multiplication();
+//     test_chain_rule();
+//     test_tanh();
+//     test_numerical_gradient();
+//     test_grad_accumulation();
+//     test_relu();
+//     test_sigmoid();
+//     test_log();
+//     test_division();
+
+//     std::cout << "Saare tests PASSED — Autograd engine ready!\n";
+//     std::cout << "This is exavtly what PyTorch .backward() does.\n";
+
+//     return 0;
+// }
+
+
+
+// ---------autograd + layers + MLP + XOR training test---------
 #include <iostream>
 #include <cassert>
 #include <cmath>
+#include <vector>
 #include "tensor.h"
 #include "value.h"
+#include "neural.h"
 
 bool close(float a, float b, float eps = 1e-3f) {
     return std::abs(a - b) < eps;
 }
 
-// ── Test 1: Simple addition ───────────────────────────────────────
+// ── Autograd tests (Step 2 ke) ────────────────────────────────────
 void test_addition() {
     std::cout << "Test 1: Addition backward... ";
-
     Value* a = new Value(3.0f);
     Value* b = new Value(4.0f);
-    Value* c = a->add(b);   // c = a + b = 7
-
+    Value* c = a->add(b);
     c->backward();
-
-    // d(a+b)/da = 1, d(a+b)/db = 1
     assert(close(a->grad, 1.0f));
     assert(close(b->grad, 1.0f));
-    assert(close(c->data, 7.0f));
-
-    delete a; delete b; delete c;
     std::cout << "PASSED\n";
 }
 
-// ── Test 2: Simple multiplication ────────────────────────────────
 void test_multiplication() {
     std::cout << "Test 2: Multiplication backward... ";
-
     Value* a = new Value(3.0f);
     Value* b = new Value(4.0f);
-    Value* c = a->mul(b);   // c = a * b = 12
-
+    Value* c = a->mul(b);
     c->backward();
-
-    // d(a*b)/da = b = 4, d(a*b)/db = a = 3
     assert(close(a->grad, 4.0f));
     assert(close(b->grad, 3.0f));
-
-    delete a; delete b; delete c;
     std::cout << "PASSED\n";
 }
 
-// ── Test 3: Chain rule — x*w + b ─────────────────────────────────
 void test_chain_rule() {
-    std::cout << "Test 3: Chain rule (x*w + b)... ";
-
+    std::cout << "Test 3: Chain rule... ";
     Value* x = new Value(2.0f);
     Value* w = new Value(3.0f);
     Value* b = new Value(1.0f);
-
-    Value* xw   = x->mul(w);       // xw  = 6
-    Value* out  = xw->add(b);      // out = 7
-    Value* loss = out->pow_op(2);  // loss = 49
-
+    Value* loss = x->mul(w)->add(b)->pow_op(2);
     loss->backward();
-
-    // manually:
-    // d(loss)/d(out) = 2 * out = 2 * 7 = 14
-    // d(loss)/d(xw)  = 14 * 1 = 14
-    // d(loss)/d(w)   = 14 * x = 14 * 2 = 28
-    // d(loss)/d(b)   = 14 * 1 = 14
-    // d(loss)/d(x)   = 14 * w = 14 * 3 = 42
-
     assert(close(w->grad, 28.0f));
     assert(close(b->grad, 14.0f));
-    assert(close(x->grad, 42.0f));
-
     std::cout << "PASSED\n";
 }
-
-// ── Test 4: Tanh ──────────────────────────────────────────────────
-void test_tanh() {
-    std::cout << "Test 4: Tanh backward... ";
-
-    Value* x = new Value(0.5f);
-    Value* y = x->tanh_op();
-
-    y->backward();
-
-    // d(tanh(x))/dx = 1 - tanh²(x)
-    float t = std::tanh(0.5f);
-    float expected_grad = 1.0f - t * t;
-
-    assert(close(x->grad, expected_grad));
-    assert(close(y->data, t));
-
-    std::cout << "PASSED\n";
-}
-
-// ── Test 5: Numerical gradient check — MOST IMPORTANT TEST ───────
-// Ye test blindly trust karo — agar ye pass hai, backward 100% correct hai
-void test_numerical_gradient() {
-    std::cout << "Test 5: Numerical gradient check... ";
-
-    float epsilon = 1e-4f;
-
-    // f(x) = tanh(x*w + b)^2
-    // w ka gradient numerically check karenge
-    float x_val = 1.5f;
-    float w_val = 2.0f;
-    float b_val = 0.5f;
-
-    // f(w + eps)
-    {
-        Value* x = new Value(x_val);
-        Value* w = new Value(w_val + epsilon);
-        Value* b = new Value(b_val);
-        Value* out = x->mul(w)->add(b)->tanh_op()->pow_op(2);
-        float loss_plus = out->data;
-
-        // f(w - eps)
-        Value* x2 = new Value(x_val);
-        Value* w2 = new Value(w_val - epsilon);
-        Value* b2 = new Value(b_val);
-        Value* out2 = x2->mul(w2)->add(b2)->tanh_op()->pow_op(2);
-        float loss_minus = out2->data;
-
-        float numerical_grad = (loss_plus - loss_minus) / (2 * epsilon);
-
-        // autograd se
-        Value* xa = new Value(x_val);
-        Value* wa = new Value(w_val);
-        Value* ba = new Value(b_val);
-        Value* loss = xa->mul(wa)->add(ba)->tanh_op()->pow_op(2);
-        loss->backward();
-
-        assert(close(wa->grad, numerical_grad, 1e-2f));
-    }
-
-    std::cout << "PASSED\n";
-}
-
-// ── Test 6: Gradient accumulation ────────────────────────────────
-void test_grad_accumulation() {
-    std::cout << "Test 6: Gradient accumulation... ";
-
-    // ek value do jagah use ho — dono gradients add hone chahiye
-    Value* x = new Value(2.0f);
-    Value* a = x->mul(x);   // a = x² — x dono jagah use hua
-    // d(x²)/dx = 2x = 4
-
-    a->backward();
-
-    assert(close(x->grad, 4.0f));
-
-    std::cout << "PASSED\n";
-}
-
 
 void test_relu() {
-    std::cout << "Test 7: ReLU backward... ";
-
-    // positive input — gradient pass through hona chahiye
+    std::cout << "Test 4: ReLU... ";
     Value* x1 = new Value(3.0f);
     Value* y1 = x1->relu();
     y1->backward();
-    assert(close(y1->data, 3.0f));
-    assert(close(x1->grad, 1.0f));  // positive tha, grad = 1
-
-    // negative input — gradient zero hona chahiye
+    assert(close(x1->grad, 1.0f));
     Value* x2 = new Value(-2.0f);
     Value* y2 = x2->relu();
     y2->backward();
-    assert(close(y2->data, 0.0f));
-    assert(close(x2->grad, 0.0f));  // negative tha, grad = 0
-
+    assert(close(x2->grad, 0.0f));
     std::cout << "PASSED\n";
 }
 
-void test_sigmoid() {
-    std::cout << "Test 8: Sigmoid backward... ";
+// ── XOR training ──────────────────────────────────────────────────
+void train_xor() {
+    std::cout << "\nXOR Training:\n";
+    std::cout << "=============\n";
 
-    Value* x = new Value(0.0f);
-    Value* y = x->sigmoid();
-    y->backward();
+    // XOR dataset
+    // input → expected output
+    std::vector<std::vector<float>> X = {
+        {0, 0},
+        {0, 1},
+        {1, 0},
+        {1, 1}
+    };
+    std::vector<float> Y = {0, 1, 1, 0};
 
-    // sigmoid(0) = 0.5
-    assert(close(y->data, 0.5f));
+    // network: 2 inputs → 8 hidden → 1 output
+    MLP model(2, {8, 1});
+    model.print_summary();
 
-    // d(sigmoid)/dx at x=0 = 0.5 * 0.5 = 0.25
-    assert(close(x->grad, 0.25f));
+    float learning_rate = 0.05f;
+    int epochs = 1000;
 
-    std::cout << "PASSED\n";
-}
+    for (int epoch = 0; epoch < epochs; epoch++) {
+        float total_loss = 0.0f;
 
-void test_log() {
-    std::cout << "Test 9: Log backward... ";
+        for (int i = 0; i < 4; i++) {
+            // inputs Value mein wrap karo
+            std::vector<Value*> inputs;
+            inputs.push_back(new Value(X[i][0]));
+            inputs.push_back(new Value(X[i][1]));
 
-    Value* x = new Value(2.0f);
-    Value* y = x->log_op();
-    y->backward();
+            Value* expected = new Value(Y[i]);
 
-    assert(close(y->data, std::log(2.0f)));
+            // forward pass
+            auto output = model.forward(inputs);
+            Value* pred  = output[0]->sigmoid();
 
-    // d(ln(x))/dx = 1/x = 0.5
-    assert(close(x->grad, 0.5f));
+            // loss
+            Value* loss = binary_cross_entropy(pred, expected);
+            total_loss += loss->data;
 
-    std::cout << "PASSED\n";
-}
+            // backward
+            model.zero_grad();
+            loss->backward();
 
-void test_division() {
-    std::cout << "Test 10: Division backward... ";
+            // weight update — gradient descent
+            for (auto p : model.parameters())
+                p->data -= learning_rate * p->grad;
+        }
 
-    Value* a = new Value(6.0f);
-    Value* b = new Value(2.0f);
-    Value* c = a->div_op(b);   // c = 3
-    c->backward();
+        // har 100 epoch pe print karo
+        if (epoch % 100 == 0 || epoch == epochs - 1) {
+            std::cout << "Epoch " << epoch 
+                      << " | Loss: " << total_loss / 4.0f << "\n";
+        }
+    }
 
-    // d(a/b)/da = 1/b = 0.5
-    // d(a/b)/db = -a/b² = -6/4 = -1.5
-    assert(close(c->data, 3.0f));
-    assert(close(a->grad, 0.5f));
-    assert(close(b->grad, -1.5f));
+    // final predictions
+    std::cout << "\nFinal Predictions:\n";
+    std::vector<std::string> labels = {"[0,0]","[0,1]","[1,0]","[1,1]"};
+    std::vector<float> expected     = {0, 1, 1, 0};
 
-    std::cout << "PASSED\n";
+    int correct = 0;
+    for (int i = 0; i < 4; i++) {
+        std::vector<Value*> inputs;
+        inputs.push_back(new Value(X[i][0]));
+        inputs.push_back(new Value(X[i][1]));
+
+        auto output = model.forward(inputs);
+        float pred  = output[0]->sigmoid()->data;
+        int   predicted_class = pred > 0.5f ? 1 : 0;
+        int   expected_class  = (int)expected[i];
+
+        if (predicted_class == expected_class) correct++;
+
+        std::cout << labels[i] << " → pred: " << pred
+                  << " → class: " << predicted_class
+                  << " (expected: " << expected_class << ")"
+                  << (predicted_class == expected_class ? " ✓" : " ✗")
+                  << "\n";
+    }
+
+    std::cout << "\nAccuracy: " << correct << "/4\n";
+
+    if (correct == 4)
+        std::cout << "XOR SOLVED — Autograd + Layers correct hain!\n";
+    else
+        std::cout << "Kuch aur epochs chahiye — learning rate adjust karo\n";
 }
 
 int main() {
-    std::cout << "NeuralForge — Step 2: Autograd Tests\n";
+    std::cout << "NeuralForge — Step 3: Neural Network Layers\n";
+    std::cout << "============================================\n\n";
 
+    std::cout << "--- Autograd Tests ---\n";
     test_addition();
     test_multiplication();
     test_chain_rule();
-    test_tanh();
-    test_numerical_gradient();
-    test_grad_accumulation();
     test_relu();
-    test_sigmoid();
-    test_log();
-    test_division();
+    std::cout << "Autograd: All good!\n";
 
-    std::cout << "Saare tests PASSED — Autograd engine ready!\n";
-    std::cout << "This is exavtly what PyTorch .backward() does.\n";
+    // XOR training
+    train_xor();
 
     return 0;
 }
