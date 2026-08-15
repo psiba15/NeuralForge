@@ -18,3 +18,13 @@ add_executable(neuralforge
 # CUDA Step 4 mein enable karenge — Kaggle pe
 # project(NeuralForge LANGUAGES CXX CUDA)
 # set(CMAKE_CUDA_ARCHITECTURES 75)
+enable_language(CUDA)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_ARCHITECTURES 75)   # T4 GPU on Kaggle = compute capability 7.5
+
+add_executable(test_step4
+    tests/test_step4.cu
+    cuda/kernels.cu
+)
+target_include_directories(test_step4 PRIVATE cuda include)
+set_target_properties(test_step4 PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
