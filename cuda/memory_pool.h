@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <cstddef>
+#include <cstdint> 
 #include "cuda_utils.h"
 
 class GPUMemoryPool {
