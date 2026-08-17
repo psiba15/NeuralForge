@@ -28,3 +28,11 @@ add_executable(test_step4
 )
 target_include_directories(test_step4 PRIVATE cuda include)
 set_target_properties(test_step4 PROPERTIES CUDA_SEPARABLE_COMPILATION ON)
+
+# step 5 ke liye test executable
+add_executable(test_step5
+    tests/test_step5.cpp
+    src/value.cpp
+    src/layers.cpp
+)
+target_include_directories(test_step5 PRIVATE include)
