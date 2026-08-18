@@ -14,24 +14,30 @@ public:
     Linear(int in_features, int out_features);
     ~Linear();
 
-    std::vector<Value*> forward(std::vector<Value*>& input);
+    // arena: agar diya, har NAYA temporary Value is vector mein track hota
+    // hai taaki caller baad mein delete kar sake (params kabhi track nahi hote)
+    std::vector<Value*> forward(std::vector<Value*>& input,
+                                 std::vector<Value*>* arena = nullptr);
     std::vector<Value*> parameters();
 };
 
 // ── ReLU (stateless) ─────────────────────────────────────────────
 class ReLU {
 public:
-    static std::vector<Value*> forward(std::vector<Value*>& input);
+    static std::vector<Value*> forward(std::vector<Value*>& input,
+                                        std::vector<Value*>* arena = nullptr);
 };
 
 // ── Softmax (stateless, numerically stable) ──────────────────────
 class Softmax {
 public:
-    static std::vector<Value*> forward(std::vector<Value*>& input);
+    static std::vector<Value*> forward(std::vector<Value*>& input,
+                                        std::vector<Value*>* arena = nullptr);
 };
 
 // ── CrossEntropy loss (softmax + neg log likelihood) ─────────────
-Value* cross_entropy_loss(std::vector<Value*>& logits, int target_class);
+Value* cross_entropy_loss(std::vector<Value*>& logits, int target_class,
+                           std::vector<Value*>* arena = nullptr);
 
 // ── Adam optimizer ────────────────────────────────────────────────
 class Adam {

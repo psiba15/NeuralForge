@@ -1,6 +1,10 @@
 #include "../include/layers.h"
 #include <cmath>
 
+static inline void track(std::vector<Value*>* arena, Value* v) {
+    if (arena) arena->push_back(v);
+}
+
 // ═══════════════════ Linear ═══════════════════
 
 Linear::Linear(int in_features, int out_features)
@@ -8,7 +12,6 @@ Linear::Linear(int in_features, int out_features)
 {
     std::random_device rd;
     std::mt19937 gen(rd());
-    // He initialization — accha kaam karta hai ReLU ke saath
     float std_dev = std::sqrt(2.0f / in_features);
     std::normal_distribution<float> dist(0.0f, std_dev);
 
@@ -28,13 +31,16 @@ Linear::~Linear() {
     for (auto b : bias) delete b;
 }
 
-std::vector<Value*> Linear::forward(std::vector<Value*>& input) {
+std::vector<Value*> Linear::forward(std::vector<Value*>& input,
+                                     std::vector<Value*>* arena) {
     std::vector<Value*> output;
     for (int i = 0; i < out_features; ++i) {
-        Value* sum = bias[i];
+        Value* sum = bias[i];   // parameter — arena mein NAHI jaayega
         for (int j = 0; j < in_features; ++j) {
             Value* prod = weights[i][j]->mul(input[j]);
+            track(arena, prod);
             sum = sum->add(prod);
+            track(arena, sum);
         }
         output.push_back(sum);
     }
@@ -51,45 +57,69 @@ std::vector<Value*> Linear::parameters() {
 
 // ═══════════════════ ReLU ═══════════════════
 
-std::vector<Value*> ReLU::forward(std::vector<Value*>& input) {
+std::vector<Value*> ReLU::forward(std::vector<Value*>& input,
+                                   std::vector<Value*>* arena) {
     std::vector<Value*> output;
-    for (auto v : input) output.push_back(v->relu());
+    for (auto v : input) {
+        Value* r = v->relu();
+        track(arena, r);
+        output.push_back(r);
+    }
     return output;
 }
 
 // ═══════════════════ Softmax ═══════════════════
-// Numerically stable: max subtract karke phir exp/sum
 
-std::vector<Value*> Softmax::forward(std::vector<Value*>& input) {
+std::vector<Value*> Softmax::forward(std::vector<Value*>& input,
+                                      std::vector<Value*>* arena) {
     float max_val = input[0]->data;
     for (auto v : input)
         if (v->data > max_val) max_val = v->data;
 
     Value* max_const = new Value(max_val);
+    track(arena, max_const);
 
     std::vector<Value*> shifted;
-    for (auto v : input) shifted.push_back(v->sub(max_const));
+    for (auto v : input) {
+        Value* s = v->sub(max_const);
+        track(arena, s);
+        shifted.push_back(s);
+    }
 
     std::vector<Value*> exps;
-    for (auto v : shifted) exps.push_back(v->exp_op());
+    for (auto v : shifted) {
+        Value* e = v->exp_op();
+        track(arena, e);
+        exps.push_back(e);
+    }
 
     Value* sum = exps[0];
-    for (size_t i = 1; i < exps.size(); ++i) sum = sum->add(exps[i]);
+    for (size_t i = 1; i < exps.size(); ++i) {
+        sum = sum->add(exps[i]);
+        track(arena, sum);
+    }
 
     std::vector<Value*> probs;
-    for (auto v : exps) probs.push_back(v->div_op(sum));
+    for (auto v : exps) {
+        Value* p = v->div_op(sum);
+        track(arena, p);
+        probs.push_back(p);
+    }
 
     return probs;
 }
 
 // ═══════════════════ CrossEntropy ═══════════════════
-// logits -> softmax -> -log(prob[target])
 
-Value* cross_entropy_loss(std::vector<Value*>& logits, int target_class) {
-    std::vector<Value*> probs = Softmax::forward(logits);
+Value* cross_entropy_loss(std::vector<Value*>& logits, int target_class,
+                           std::vector<Value*>* arena) {
+    std::vector<Value*> probs = Softmax::forward(logits, arena);
     Value* p = probs[target_class];
     Value* logp = p->log_op();
-    return logp->neg();
+    track(arena, logp);
+    Value* loss = logp->neg();
+    track(arena, loss);
+    return loss;
 }
 
 // ═══════════════════ Adam ═══════════════════
